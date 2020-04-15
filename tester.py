@@ -1,7 +1,10 @@
+import sys
 import tkinter as tk
 from PIL import Image, ImageTk
 import spotipy as sp
 from spotipy.oauth2 import SpotifyClientCredentials
+import requests
+from io import BytesIO
 
 #from account on spotify for developers, eventually make it read from file
 cid = '665d32e35f5f407d9b3b4b64757950a1' #client ID
@@ -20,28 +23,38 @@ class spotify_display(tk.Frame):
         #will have to make your own spotify developers account for these
         self.client_id = cid
         self.client_secret = secret
+        self.username = 'ivotix343'
 
-        #self.credentials_manager = SpotifyClientCredentials(client_id = self.client_id, client_secret = self.client_id)
-        #self.spot = sp.Spotify(client_credentials_manager = self.credentials_manager)
+        
+        #test for retrieving user data, scope to read currently playing set
+        token = sp.util.prompt_for_user_token(self.username, 'user-read-currently-playing', self.client_id, self.client_secret,"https://localhost:8888/callback")
 
-        #start random testing
-        #query, limit or number of items, offset or index of item to return, type
-        #self.findse = self.spot.search(q='year:2019', limit = 1, offset = 0, type = 'track')
+        if token:
+            self.spot = sp.Spotify(auth=token)
+            self.result = self.spot.currently_playing()
 
-        #display Album Art
+            if self.result is not None:
+                #display Album Art
+                self.songart = self.result['item']['album']['images'][1]['url']
+                image = Image.open(BytesIO((requests.get(self.songart)).content))
+                image = image.resize((300,300), Image.ANTIALIAS)
+                photo = ImageTk.PhotoImage(image)
+                self.albumartlb = tk.Label(self, image = photo, background = 'black')
+                self.albumartlb.image = photo #keep a reference else it wont display
+                self.albumartlb.pack(side = 'top', anchor = 'ne')
 
-        #display Song and Artist
-        #self.songtxt = (self.findse['tracks']['items'][0])['name']
-        self.songtxt = 'Kanashii Ureshii by frederic'
-        self.songlb = tk.Label(self, text = self.songtxt, font = ('Helvetica', 10), fg = "white", background = "black")
-        self.songlb.pack(side = 'bottom', anchor = 'center', pady = 50)
-
-        image = Image.open("icons\\album.jfif")
-        image = image.resize((300,300), Image.ANTIALIAS)
-        photo = ImageTk.PhotoImage(image)
-        self.albumartlb = tk.Label(self, image = photo, background = 'black')
-        self.albumartlb.image = photo #keep a reference else it wont display
-        self.albumartlb.pack(side = 'top', anchor = 'ne')
+                #display Song and Artist
+                self.songtxt = str(self.result['item']['name']) + " by " + str(self.result['item']['artists'][0]['name'])
+                self.songlb = tk.Label(self, text = self.songtxt, font = ('Helvetica', 10), fg = "white", background = "black")
+                self.songlb.pack(side = 'bottom', anchor = 'center', pady = 50)
+            else:
+                #message for no music playing
+                self.wlb = tk.Label(self, text = 'No Music Currently Playing', font = ('Helvetica', 10), fg = "white", background = "black")
+                self.wlb.pack(side = 'bottom', anchor = 'center', pady = 50)
+        else:
+            #message for authentication problems
+            self.wlb = tk.Label(self, text = 'Cant get token', font = ('Helvetica', 10), fg = "white", background = "black")
+            self.wlb.pack(side = 'bottom', anchor = 'center', pady = 50)
 
 
 class weather_display(tk.Frame):
